@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>درگاه پرداخت سامان - SEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Vazirmatn', 'Tahoma', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info {
+            margin-bottom: 30px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: #333;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: left;
+            font-family: 'Courier New', monospace;
+        }
+
+        .info-value.amount {
+            color: #667eea;
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 30px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Vazirmatn', 'Tahoma', sans-serif;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-cancel {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-cancel:hover {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>درگاه پرداخت سامان</h1>
+            <p>SEP - Saman Electronic Payment</p>
+        </div>
+
+        <div class="info">
+            <div class="info-item">
+                <span class="info-label">شماره رهگیری:</span>
+                <span class="info-value">{{.RefNum}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">شماره ترمینال:</span>
+                <span class="info-value">{{.TerminalId}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">شماره رزرو:</span>
+                <span class="info-value">{{.ResNum}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">مبلغ:</span>
+                <span class="info-value amount">{{.Amount}} ریال</span>
+            </div>
+        </div>
+
+        <div class="buttons">
+            <button class="btn-success" onclick="submitPayment('pay')">پرداخت موفق</button>
+            <button class="btn-cancel" onclick="submitPayment('cancel')">لغو پرداخت</button>
+        </div>
+    </div>
+
+    <script>
+        function submitPayment(action) {
+            const refNum = '{{.RefNum}}';
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/saman/sep.shaparak.ir/OnlinePG/HandlePayment';
+            
+            const refNumInput = document.createElement('input');
+            refNumInput.type = 'hidden';
+            refNumInput.name = 'RefNum';
+            refNumInput.value = refNum;
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = action;
+            
+            form.appendChild(refNumInput);
+            form.appendChild(actionInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+</body>
+</html>
