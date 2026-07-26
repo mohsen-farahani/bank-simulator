@@ -13,7 +13,7 @@ The SEP simulator provides a full implementation of the Saman bank payment gatew
 - ✅ **Payment Page**: Beautiful Persian payment interface
 - ✅ **Transaction Verification**: Verify completed transactions
 - ✅ **Transaction Reversal**: Reverse verified transactions
-- ✅ **Merchant Integration**: Dynamic merchant registration and authentication
+- ✅ **Merchant Integration**: Dynamic merchant registration (TerminalId-based lookup; API token not enforced yet)
 
 ## API Endpoints
 

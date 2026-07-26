@@ -15,9 +15,9 @@ type Config struct {
 
 func Load() *Config {
 	return &Config{
-		Port:          getEnv("PORT", "80"),
+		Port:          getEnv("PORT", "8080"),
 		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", "1234"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
 		RedisDB:       0,
 	}
 }

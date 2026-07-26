@@ -1,202 +1,210 @@
-# SEP Gateway Simulator
+# Bank Simulator
 
-An open-source simulator for Iranian payment gateways (PSPs) designed for QA and testing purposes. This project simulates the SEP (Saman Electronic Payment) gateway without connecting to real banks.
+**A local payment-gateway simulator for Iranian banks** — test your checkout flow without a real PSP, real cards, or waiting on bank sandboxes.
 
-## Features
+If you are building an online shop, SaaS, or payment integration in Iran, this tool lets your QA and backend teams complete the full SEP (Saman) payment cycle on `localhost` in minutes.
 
-- **SEP Gateway Simulation**: Full implementation of SEP payment flow with exact API compatibility
-- **Chi Router**: Modern HTTP routing with Chi
-- **Redis Storage**: Transaction and merchant data persistence
-- **Dynamic Merchant Registration**: Register merchants and get unique credentials
-- **Plugin Architecture**: Easy to add new bank gateways
-- **Docker Support**: Ready-to-use Docker Compose setup
-- **Bank-Specific Documentation**: Detailed README for each bank implementation
+> **Local / QA only.** This is not a real bank gateway. Do not expose it to the public internet or use it in production.
 
-## Project Structure
+---
 
-```
-sep-gateway-simulator/
-├── cmd/
-│   └── server/
-│       └── main.go          # Server entry point
-├── internal/
-│   ├── banks/
-│   │   ├── registry.go      # Bank registry system
-│   │   └── saman/
-│   │       ├── handler.go   # SEP HTTP handlers
-│   │       ├── models.go    # Request/response models
-│   │       └── plugin.go    # Plugin implementation
-│   ├── merchants/
-│   │   ├── register.go      # Merchant registration handler
-│   │   └── store.go         # Merchant storage
-│   ├── storage/
-│   │   └── redis.go         # Redis client wrapper
-│   └── transactions/
-│       ├── model.go         # Transaction data model
-│       └── service.go       # Transaction service
-├── web/
-│   └── templates/
-│       └── payment.html     # Payment page template
-├── docker-compose.yml
-├── go.mod
-└── README.md
+## Why this exists
+
+Real Iranian payment gateways are slow to provision, rate-limited in sandbox, and awkward for automated tests. Bank Simulator gives you:
+
+| Pain today | What you get |
+|---|---|
+| Waiting for bank sandbox access | Run a SEP-compatible API locally in seconds |
+| Flaky or rate-limited test gateways | Deterministic success / cancel flows you control |
+| Hard-to-reproduce payment bugs | Full token → pay page → callback → verify → reverse path |
+| Coupling tests to real money / cards | Fake merchants, fake transactions, Redis-backed state |
+
+**Current focus:** SEP (Saman Electronic Payment) with API paths that mirror the real gateway (`/saman/sep.shaparak.ir/...`). Mellat and Parsian hooks are reserved for later.
+
+---
+
+## Quick start
+
+### Requirements
+
+- Go **1.25+**
+- Redis (or Docker)
+
+### Option A — Docker Compose (recommended)
+
+```bash
+git clone https://github.com/mohsen-farahani/bank-simulator.git
+cd bank-simulator
+docker compose up --build
 ```
 
-## Prerequisites
+App: [http://localhost:8080](http://localhost:8080) · Health: [http://localhost:8080/health](http://localhost:8080/health)
 
-- Go 1.23.5 or higher
-- Redis (via Docker Compose or standalone)
-- Docker and Docker Compose (optional)
+### Option B — Run locally
 
-## Quick Start
+```bash
+git clone https://github.com/mohsen-farahani/bank-simulator.git
+cd bank-simulator
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd BankSimulator
-   ```
+# Start Redis only
+docker compose up -d redis
 
-2. **Start Redis with Docker Compose**
-   ```bash
-   docker-compose up -d
-   ```
+cp .env.example .env   # optional; defaults work for local Redis
+go run ./cmd/server
+```
 
-3. **Install dependencies**
-   ```bash
-   go mod tidy
-   ```
+Server listens on `:8080` by default.
 
-4. **Run the server**
-   ```bash
-   go run cmd/server/main.go
-   ```
+---
 
-   Or use Make:
-   ```bash
-   make run
-   ```
+## 5-minute walkthrough
 
-The server will start on `http://localhost:8080` by default.
+### 1. Register a test merchant
 
-## API Endpoints
+```bash
+curl -s -X POST http://localhost:8080/merchants/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Demo Shop"}'
+```
 
-### Merchant Registration
+Example response:
 
-**POST** `/merchants/register`
-
-Register a new merchant and receive unique credentials.
-
-Request:
 ```json
 {
-  "name": "Test Shop"
-}
-```
-
-Response:
-```json
-{
-  "merchant_id": "MERCHANT-abc123",
+  "merchant_id": "MERCHANT-a1b2c3d4",
   "terminal_id": "12345678",
-  "api_token": "secure-random-token"
+  "api_token": "..."
 }
 ```
 
-### Bank Gateway Endpoints
+Use `terminal_id` in the next step. (`api_token` is generated for future auth work; endpoints currently key off `TerminalId` only — see [Security](#security).)
 
-#### SEP (Saman Electronic Payment)
+### 2. Request a payment token
 
-All SEP endpoints match the official SEP gateway specification. For detailed documentation, see [SEP Bank README](internal/banks/saman/README.md).
+```bash
+curl -s -X POST http://localhost:8080/saman/sep.shaparak.ir/onlinepg/onlinepg \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "action": "token",
+    "TerminalId": "12345678",
+    "Amount": 100000,
+    "ResNum": "ORDER-1001",
+    "RedirectUrl": "http://localhost:3000/callback"
+  }'
+```
 
-**Quick Reference (all routes prefixed with `/saman/sep.shaparak.ir`):**
-- **POST** `/saman/sep.shaparak.ir/onlinepg/onlinepg` - Request payment token
-- **GET** `/saman/sep.shaparak.ir/OnlinePG/SendToken?token=XXXX` - Display payment page
-- **POST** `/saman/sep.shaparak.ir/OnlinePG/OnlinePG` - Payment form redirect
-- **POST** `/saman/sep.shaparak.ir/OnlinePG/HandlePayment` - Payment confirmation
-- **POST** `/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction` - Verify transaction
-- **POST** `/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/ReverseTransaction` - Reverse transaction
+You get a `token` (UUID). Open the payment page:
 
-📖 **Full Documentation:** [SEP Bank Implementation Guide](internal/banks/saman/README.md)
+```
+http://localhost:8080/saman/sep.shaparak.ir/OnlinePG/SendToken?token=<TOKEN>
+```
 
-## Payment Flow
+### 3. Pay or cancel
 
-### SEP Payment Flow
+On the Persian payment page, choose **پرداخت موفق** or **انصراف**. The browser redirects to your `RedirectUrl` with SEP-style query params (`State`, `RefNum`, `ResNum`, …).
 
-1. **Register Merchant**: Create a merchant account and receive `terminal_id` and `api_token` (no callback URL needed)
-2. **Request Token**: Call `/saman/sep.shaparak.ir/onlinepg/onlinepg` with merchant credentials and `RedirectUrl` in request
-3. **Redirect to Payment**: Use the returned token to redirect to `/saman/sep.shaparak.ir/OnlinePG/SendToken?token=XXXX`
-4. **Complete Payment**: User clicks "Pay Successfully" or "Cancel Payment" on the payment page
-5. **Callback**: Merchant receives callback at `RedirectUrl` (from token request) with transaction status
-6. **Verify Transaction**: Call `/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction` to verify
-7. **Reverse (Optional)**: Call `/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/ReverseTransaction` to reverse
+### 4. Verify (and optionally reverse)
 
-📖 **Detailed Flow Diagram:** See [SEP Bank README](internal/banks/saman/README.md#payment-flow)
+```bash
+# Verify
+curl -s -X POST http://localhost:8080/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction \
+  -H 'Content-Type: application/json' \
+  -d '{"RefNum":"<TOKEN>","TerminalNumber":12345678}'
+
+# Reverse (only after verify)
+curl -s -X POST http://localhost:8080/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/ReverseTransaction \
+  -H 'Content-Type: application/json' \
+  -d '{"RefNum":"<TOKEN>","TerminalNumber":12345678}'
+```
+
+Full SEP field reference: [internal/banks/saman/README.md](internal/banks/saman/README.md)
+
+---
+
+## Payment flow
+
+```text
+Your app                    Bank Simulator                      Your callback
+   |                              |                                    |
+   |-- register merchant -------->|                                    |
+   |-- request token ------------>|                                    |
+   |<--------- token -------------|                                    |
+   |-- redirect user to SendToken>|                                    |
+   |                              |-- user pays / cancels ------------>|
+   |-- verify / reverse --------->|                                    |
+```
+
+Statuses stored in Redis: `PENDING` → `PAID` → `VERIFIED` → `REVERSED`.
+
+---
 
 ## Configuration
 
-Environment variables:
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `8080` | HTTP listen port |
+| `REDIS_ADDR` | `localhost:6379` | Redis host:port |
+| `REDIS_PASSWORD` | _(empty)_ | Redis password; set one if Redis requires auth |
+| `REDIS_DB` | `0` | Redis DB index |
 
-- `PORT`: Server port (default: `80`)
-- `REDIS_ADDR`: Redis address (default: `localhost:6379`)
-- `REDIS_PASSWORD`: Redis password (default: `1234`)
-- `REDIS_DB`: Redis database number (default: `0`)
+Copy `.env.example` when you need a starting point. Keep real `.env` files out of git (already in `.gitignore`).
 
-## Bank Implementations
+---
 
-### SEP (Saman Electronic Payment)
+## Project layout
 
-Full implementation of the SEP gateway with all official endpoints.
-
-📖 **[SEP Bank Documentation →](internal/banks/saman/README.md)**
-
-### Other Banks
-
-- **Mellat** - Placeholder (coming soon)
-- **Parsian** - Placeholder (coming soon)
-
-## Development
-
-### Make Commands
-
-- `make run` - Run the server
-- `make test` - Run tests
-- `make docker-up` - Start Docker services
-- `make docker-down` - Stop Docker services
-- `make build` - Build the binary
-- `make clean` - Clean build artifacts
-
-### Adding a New Bank
-
-1. Create a new package under `internal/banks/` (e.g., `internal/banks/mellat/`)
-2. Implement the `banks.Bank` interface:
-   ```go
-   type Bank interface {
-       Name() string
-       RegisterRoutes(r chi.Router)
-   }
-   ```
-3. Register the bank in `cmd/server/main.go`:
-   ```go
-   bankPlugin, err := mellat.NewPlugin(storage)
-   if err != nil {
-       return err
-   }
-   registry.Register(bankPlugin)
-   ```
-4. Create a `README.md` in your bank package documenting the API endpoints and usage
-
-## Docker
-
-Start all services:
-```bash
-docker-compose up -d
+```text
+cmd/server/           # process entrypoint
+internal/
+  banks/              # bank plugins (SEP + placeholders)
+  merchants/          # merchant registration & store
+  transactions/       # transaction model & service
+  storage/            # Redis client
+  config/             # env-based config
+web/templates/        # payment page (RTL / Persian)
 ```
 
-Stop all services:
-```bash
-docker-compose down
-```
+Banks plug in via a small interface (`Name` + `RegisterRoutes`). To add another PSP, create a package under `internal/banks/`, implement the interface, and register it in `cmd/server/main.go`.
+
+---
+
+## Security
+
+This project is a **developer / QA simulator**, not a hardened public service.
+
+| Topic | Status |
+|---|---|
+| Real bank credentials | None — no live PSP keys required |
+| Secrets in repo | `.env` is gitignored; use `.env.example` only |
+| API authentication | Merchant `api_token` is **not** enforced on SEP endpoints yet |
+| Merchant registration | Open (`POST /merchants/register`) — fine on localhost, unsafe if public |
+| Redis | No default password; bind Redis to localhost or set `REDIS_PASSWORD` |
+| Docker image | Runs as non-root; `.dockerignore` keeps secrets out of build context |
+
+**Do not** publish this service on the open internet without auth, network restrictions, and a strong Redis password.
+
+---
+
+## Who is this for?
+
+- Backend engineers integrating SEP / Shaparak-style flows
+- QA teams writing end-to-end payment tests
+- Product teams demoing checkout without bank paperwork
+
+---
+
+## Roadmap
+
+- [x] SEP token, pay page, verify, reverse
+- [x] Dynamic merchant registration + Redis persistence
+- [ ] Enforce `api_token` on sensitive endpoints
+- [ ] Mellat / Parsian simulators
+- [ ] Scripted scenarios (timeout, decline, double-verify)
+
+Contributions and bank plugins are welcome.
+
+---
 
 ## License
 
-MIT License - see LICENSE file for details.
+[MIT](LICENSE) © Mohsen Farahani
