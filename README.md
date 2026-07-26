@@ -2,9 +2,13 @@
 
 **A local payment-gateway simulator for Iranian banks** — test your checkout flow without a real PSP, real cards, or waiting on bank sandboxes.
 
+**Live demo:** [https://bank-simulator-50tb.onrender.com](https://bank-simulator-50tb.onrender.com) · Health: [/health](https://bank-simulator-50tb.onrender.com/health)
+
+> اگر از داخل ایران به Render دسترسی ندارید، پروژه را لوکال با Docker Compose اجرا کنید (بخش Quick start).
+
 If you are building an online shop, SaaS, or payment integration in Iran, this tool lets your QA and backend teams complete the full SEP (Saman) payment cycle on `localhost` in minutes.
 
-> **QA / demo only.** This is not a real bank gateway and must not be used in production. A free public demo can run on Render (see [Deploy for free on Render](#deploy-for-free-on-render)).
+> **QA / demo only.** This is not a real bank gateway and must not be used in production.
 
 ---
 
@@ -59,7 +63,11 @@ Server listens on `:8080` by default.
 
 ## Deploy for free on Render
 
+**Public demo:** [https://bank-simulator-50tb.onrender.com](https://bank-simulator-50tb.onrender.com)
+
 [Render](https://render.com) connects to your GitHub repo, gives you HTTPS on `*.onrender.com`, and includes a free Redis-compatible Key Value store. No credit card required for the free tier.
+
+> **Iran access:** `*.onrender.com` is often filtered inside Iran. Run locally with Docker Compose instead.
 
 ### One-time setup
 
@@ -92,7 +100,7 @@ This is ideal for a shared demo / OSS playground, not for SLA-backed QA.
 Point API calls at your Render URL instead of `localhost:8080`. Example:
 
 ```bash
-curl -s -X POST https://YOUR-SERVICE.onrender.com/merchants/register \
+curl -s -X POST https://bank-simulator-50tb.onrender.com/merchants/register \
   -H 'Content-Type: application/json' \
   -d '{"name":"Demo Shop"}'
 ```
