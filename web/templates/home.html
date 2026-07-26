@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank Simulator — شبیه‌ساز درگاه پرداخت</title>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #34d399;
+      --warn: #fbbf24;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Vazirmatn, Tahoma, sans-serif;
+      background: radial-gradient(ellipse at top, #1e3a5f 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.7;
+      padding: 2rem 1.25rem 3rem;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 1.75rem; margin-bottom: .5rem; }
+    .sub { color: var(--muted); margin-bottom: 1.5rem; }
+    .badge {
+      display: inline-block;
+      background: rgba(56, 189, 248, .15);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, .35);
+      border-radius: 999px;
+      padding: .2rem .75rem;
+      font-size: .8rem;
+      margin-bottom: 1rem;
+    }
+    .warn {
+      background: rgba(251, 191, 36, .12);
+      border: 1px solid rgba(251, 191, 36, .35);
+      color: var(--warn);
+      border-radius: 12px;
+      padding: .9rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: .9rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 1.25rem 1.35rem;
+      margin-bottom: 1rem;
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: .6rem; }
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .82rem;
+      direction: ltr;
+      text-align: left;
+    }
+    pre {
+      background: #0b1220;
+      border-radius: 10px;
+      padding: .9rem 1rem;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    a { color: var(--accent); }
+    ul { padding-right: 1.2rem; color: var(--muted); }
+    li { margin: .35rem 0; }
+    .ok { color: var(--ok); }
+    footer { margin-top: 2rem; color: var(--muted); font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Public demo · رایگان برای تست</span>
+    <h1>Bank Simulator</h1>
+    <p class="sub">شبیه‌ساز درگاه SEP سامان برای QA و توسعه — بدون اتصال به بانک واقعی.</p>
+
+    <div class="warn">
+      این سرویس فقط برای تست است. پول واقعی جابه‌جا نمی‌شود و نباید در پروداکشن استفاده شود.
+      دادهٔ Redis رایگان ممکن است بعد از ری‌استارت پاک شود؛ اولین درخواست بعد از بیکاری ممکن است چند ده ثانیه طول بکشد (cold start).
+    </div>
+
+    <div class="card">
+      <h2>شروع سریع</h2>
+      <ol style="padding-right:1.2rem;color:var(--muted)">
+        <li>یک merchant بسازید</li>
+        <li>با <code>TerminalId</code> توکن پرداخت بگیرید</li>
+        <li>صفحهٔ پرداخت را باز کنید و Pay / Cancel بزنید</li>
+        <li>تراکنش را Verify کنید</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h2>۱) ثبت merchant</h2>
+      <pre>curl -s -X POST {{.BaseURL}}/merchants/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Demo Shop"}'</pre>
+    </div>
+
+    <div class="card">
+      <h2>۲) درخواست توکن</h2>
+      <pre>curl -s -X POST {{.BaseURL}}/saman/sep.shaparak.ir/onlinepg/onlinepg \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "action": "token",
+  "TerminalId": "YOUR_TERMINAL_ID",
+  "Amount": 100000,
+  "ResNum": "ORDER-1001",
+  "RedirectUrl": "https://example.com/callback"
+}'</pre>
+    </div>
+
+    <div class="card">
+      <h2>۳) صفحهٔ پرداخت</h2>
+      <pre>{{.BaseURL}}/saman/sep.shaparak.ir/OnlinePG/SendToken?token=YOUR_TOKEN</pre>
+    </div>
+
+    <div class="card">
+      <h2>Endpointهای مفید</h2>
+      <ul>
+        <li><span class="ok">GET</span> <code>/health</code></li>
+        <li><span class="ok">POST</span> <code>/merchants/register</code></li>
+        <li><span class="ok">POST</span> <code>/saman/sep.shaparak.ir/onlinepg/onlinepg</code></li>
+        <li><span class="ok">GET</span> <code>/saman/sep.shaparak.ir/OnlinePG/SendToken</code></li>
+        <li><span class="ok">POST</span> <code>/saman/sep.shaparak.ir/verifyTxnRandomSessionkey/ipg/VerifyTransaction</code></li>
+      </ul>
+    </div>
+
+    <footer>
+      منبع باز · <a href="https://github.com/mohsen-farahani/bank-simulator">GitHub</a>
+      · مستندات SEP: <a href="https://github.com/mohsen-farahani/bank-simulator/blob/main/internal/banks/saman/README.md">SEP README</a>
+    </footer>
+  </div>
+</body>
+</html>

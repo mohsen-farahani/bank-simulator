@@ -3,6 +3,7 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 
@@ -26,10 +27,26 @@ func main() {
 	}
 	defer storageClient.Close()
 
+	homeTmpl, err := template.ParseFiles("web/templates/home.html")
+	if err != nil {
+		log.Fatalf("Failed to parse home template: %v", err)
+	}
+
 	// Initialize Chi router
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
+	// Landing page for the public demo
+	r.Get("/", func(w http.ResponseWriter, req *http.Request) {
+		scheme := "http"
+		if req.TLS != nil || req.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		baseURL := scheme + "://" + req.Host
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_ = homeTmpl.Execute(w, map[string]string{"BaseURL": baseURL})
+	})
 
 	// Register merchant routes
 	merchantHandler := merchants.NewHandler(storageClient)

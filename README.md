@@ -4,7 +4,7 @@
 
 If you are building an online shop, SaaS, or payment integration in Iran, this tool lets your QA and backend teams complete the full SEP (Saman) payment cycle on `localhost` in minutes.
 
-> **Local / QA only.** This is not a real bank gateway. Do not expose it to the public internet or use it in production.
+> **QA / demo only.** This is not a real bank gateway and must not be used in production. A free public demo can run on Render (see [Deploy for free on Render](#deploy-for-free-on-render)).
 
 ---
 
@@ -54,6 +54,48 @@ go run ./cmd/server
 ```
 
 Server listens on `:8080` by default.
+
+---
+
+## Deploy for free on Render
+
+[Render](https://render.com) connects to your GitHub repo, gives you HTTPS on `*.onrender.com`, and includes a free Redis-compatible Key Value store. No credit card required for the free tier.
+
+### One-time setup
+
+1. Push this repo to GitHub (if it is not already public).
+2. Open [Render Dashboard → New → Blueprint](https://dashboard.render.com/select-repo?type=blueprint).
+3. Connect the GitHub account and select `bank-simulator`.
+4. Render reads `render.yaml` and creates:
+   - **Web Service** (`bank-simulator`) — free plan
+   - **Key Value** (`bank-simulator-redis`) — free Redis-compatible store
+5. Deploy. Your public URL looks like:
+
+```text
+https://bank-simulator-xxxx.onrender.com
+```
+
+Open `/` for the demo landing page, or `/health` to confirm the service is up.
+
+### Free-tier limits (important)
+
+| Limit | What it means for users |
+|---|---|
+| Sleep after ~15 min idle | First request after sleep can take 30–60s (cold start) |
+| Free Redis has no durable disk | Merchant/transaction data can disappear on restart |
+| ~750 instance hours / month | Enough for one always-on free web service |
+
+This is ideal for a shared demo / OSS playground, not for SLA-backed QA.
+
+### After deploy
+
+Point API calls at your Render URL instead of `localhost:8080`. Example:
+
+```bash
+curl -s -X POST https://YOUR-SERVICE.onrender.com/merchants/register \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Demo Shop"}'
+```
 
 ---
 
@@ -142,10 +184,11 @@ Statuses stored in Redis: `PENDING` → `PAID` → `VERIFIED` → `REVERSED`.
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8080` | HTTP listen port |
-| `REDIS_ADDR` | `localhost:6379` | Redis host:port |
-| `REDIS_PASSWORD` | _(empty)_ | Redis password; set one if Redis requires auth |
+| `PORT` | `8080` | HTTP listen port (Render sets this automatically too) |
+| `REDIS_ADDR` | `localhost:6379` | Redis host:port (used when `REDIS_URL` is unset) |
+| `REDIS_PASSWORD` | _(empty)_ | Redis password |
 | `REDIS_DB` | `0` | Redis DB index |
+| `REDIS_URL` | _(unset)_ | Full Redis URL; overrides addr/password/db (used on Render) |
 
 Copy `.env.example` when you need a starting point. Keep real `.env` files out of git (already in `.gitignore`).
 
